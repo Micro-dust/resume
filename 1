@@ -1,0 +1,55 @@
+import java.io.*;
+import java.nio.file.*;
+
+public class FileRenameAndContentUpdate {
+    public static void main(String[] args) {
+        String directoryPath = "your_directory_path"; // 替换为你的目录路径
+        String target = "1504"; // 目标字符串
+        String replacement = "2549"; // 替换字符串
+
+        File directory = new File(directoryPath);
+        if (directory.exists() && directory.isDirectory()) {
+            processFiles(directory, target, replacement);
+        } else {
+            System.out.println("指定的路径不是一个有效的目录");
+        }
+    }
+
+    public static void processFiles(File file, String target, String replacement) {
+        if (file.isDirectory()) {
+            // 递归处理子目录
+            for (File child : file.listFiles()) {
+                processFiles(child, target, replacement);
+            }
+        } else {
+            // 修改文件内容
+            updateFileContent(file, target, replacement);
+
+            // 修改文件名
+            String fileName = file.getName();
+            if (fileName.contains(target)) {
+                String newFileName = fileName.replace(target, replacement);
+                File newFile = new File(file.getParent(), newFileName);
+                if (file.renameTo(newFile)) {
+                    System.out.println("文件名已修改: " + file.getPath() + " -> " + newFile.getPath());
+                } else {
+                    System.out.println("文件名修改失败: " + file.getPath());
+                }
+            }
+        }
+    }
+
+    public static void updateFileContent(File file, String target, String replacement) {
+        try {
+            Path filePath = file.toPath();
+            String content = new String(Files.readAllBytes(filePath));
+            if (content.contains(target)) {
+                content = content.replace(target, replacement);
+                Files.write(filePath, content.getBytes());
+                System.out.println("文件内容已修改: " + file.getPath());
+            }
+        } catch (IOException e) {
+            System.out.println("无法修改文件内容: " + file.getPath() + "，错误: " + e.getMessage());
+        }
+    }
+}
