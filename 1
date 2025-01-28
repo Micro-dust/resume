@@ -5,7 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
 
-public class FileCreatorWithTime {
+public class FileCreatorWithTimeAndPattern {
     public static void main(String[] args) {
         String csvFilePath = "your_csv_file_path.csv"; // 替换为你的 CSV 文件路径
         String specifiedString = "MyString"; // 你指定的字符串
@@ -24,7 +24,7 @@ public class FileCreatorWithTime {
 
                 for (int i = 0; i < 4; i++) {
                     int offset = i - 1; // -1, 0, +1, +2
-                    createFileWithTime(folderPath, fileNamePattern, saveTime + offset, specifiedString, offset);
+                    createFileWithPattern(folderPath, fileNamePattern, saveTime + offset, specifiedString, offset);
                 }
             }
         } catch (IOException e) {
@@ -32,7 +32,7 @@ public class FileCreatorWithTime {
         }
     }
 
-    private static void createFileWithTime(String folderPath, String fileNamePattern, int daysOffset, String specifiedString, int offset) {
+    private static void createFileWithPattern(String folderPath, String fileNamePattern, int daysOffset, String specifiedString, int offset) {
         try {
             // 创建文件夹
             Files.createDirectories(Paths.get(folderPath));
@@ -44,7 +44,7 @@ public class FileCreatorWithTime {
             String dateStr = dateFormat.format(new Date(millis));
 
             // 生成文件名
-            String fileName = generateFileName(fileNamePattern, dateStr, specifiedString);
+            String fileName = generateFileNameWithPattern(fileNamePattern, dateStr, specifiedString);
 
             // 创建文件
             File file = new File(folderPath, fileName);
@@ -66,14 +66,31 @@ public class FileCreatorWithTime {
         }
     }
 
-    private static String generateFileName(String pattern, String dateStr, String specifiedString) {
+    private static String generateFileNameWithPattern(String pattern, String dateStr, String specifiedString) {
         Random random = new Random();
         StringBuilder result = new StringBuilder();
+        boolean firstAsteriskReplaced = false; // 用于标记第一个 * 是否已替换
+        int questionMarkCount = 0; // 统计问号数量
+
         for (char c : pattern.toCharArray()) {
-            if (c == '?') {
-                result.append(random.nextInt(10)); // 生成随机数字
-            } else if (c == '*') {
-                result.append(specifiedString).append(dateStr); // 替换为指定字符串加日期
+            if (c == '*') {
+                if (!firstAsteriskReplaced) {
+                    // 第一个 * 替换为指定字符串
+                    result.append(specifiedString);
+                    firstAsteriskReplaced = true;
+                } else {
+                    // 第二个及之后的 * 替换为日期字符串
+                    result.append(dateStr);
+                }
+            } else if (c == '?') {
+                questionMarkCount++;
+                if (questionMarkCount <= 8) {
+                    // 前 8 个问号替换为日期字符串的一部分
+                    result.append(dateStr.charAt(questionMarkCount - 1));
+                } else {
+                    // 剩余问号替换为随机数字
+                    result.append(random.nextInt(10));
+                }
             } else {
                 result.append(c);
             }
