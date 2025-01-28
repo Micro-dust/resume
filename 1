@@ -1,70 +1,81 @@
-import java.io.*;
-import java.nio.file.*;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Random;
 
 public class FileCreator {
 
     public static void main(String[] args) {
-        // CSV文件路径
-        String csvFilePath = "input.csv"; // 修改为你的CSV文件路径
-        String replacementString = "指定字符串"; // * 替换的字符串
+        String csvFilePath = "path/to/your/csvfile.csv"; // CSV文件路径
+        String outputBasePath = "C:/test"; // 基础目录
+        String customString = "YourString"; // 替换*的字符串
 
         try (BufferedReader br = new BufferedReader(new FileReader(csvFilePath))) {
             String line;
             while ((line = br.readLine()) != null) {
-                String[] columns = line.split(",");
-                if (columns.length >= 4) {
-                    String folderPath = columns[0];
-                    String fileNamePattern = columns[1];
-                    int saveTime = Integer.parseInt(columns[2]);
+                // 解析CSV中的行
+                String[] parts = line.split(",");
+                if (parts.length < 4) continue;
 
-                    for (int offset = 0; offset < 4; offset++) {
-                        createFile(folderPath, fileNamePattern, saveTime + offset, replacementString);
-                    }
+                String folderPath = parts[0].trim();
+                String fileNamePattern = parts[1].trim();
+                int saveDays = Integer.parseInt(parts[2].trim());
+
+                // 创建目标目录
+                String targetFolder = outputBasePath + folderPath;
+                File folder = new File(targetFolder);
+                if (!folder.exists()) {
+                    folder.mkdirs();
+                }
+
+                // 创建4个文件
+                for (int i = 0; i < 4; i++) {
+                    createFile(targetFolder, fileNamePattern, saveDays + i - 1, customString);
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static void createFile(String folderPath, String fileNamePattern, int daysOffset, String replacementString) {
+    private static void createFile(String folderPath, String fileNamePattern, int daysOffset, String customString) {
         try {
-            // 创建文件夹
-            Files.createDirectories(Paths.get(folderPath));
+            // 计算文件日期
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+            Date date = new Date(System.currentTimeMillis() - daysOffset * 24L * 60 * 60 * 1000);
+            String dateString = sdf.format(date);
 
-            // 计算文件名中的日期
-            LocalDate date = LocalDate.now().minusDays(daysOffset);
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-            String dateString = date.format(dateFormatter);
-
-            // 替换问号和星号
+            // 替换文件名中的占位符
             String fileName = fileNamePattern
-                    .replace("?????????", dateString + generateRandomDigits(9 - dateString.length()))
-                    .replace("*", replacementString);
+                .replace("?????????", dateString + getRandomNumbers(9 - dateString.length()))
+                .replace("*", customString + dateString);
 
             // 创建文件
-            File file = new File(folderPath, fileName);
-            if (file.createNewFile()) {
-                System.out.println("Created file: " + file.getAbsolutePath());
-
-                // 设置文件修改时间
-                file.setLastModified(System.currentTimeMillis() - (long) daysOffset * 24 * 60 * 60 * 1000);
-            } else {
-                System.out.println("File already exists: " + file.getAbsolutePath());
+            File file = new File(folderPath + "/" + fileName);
+            if (!file.exists()) {
+                file.createNewFile();
             }
-        } catch (Exception e) {
+
+            // 设置文件的创建时间
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write("Generated file\n");
+            }
+
+            System.out.println("Created file: " + file.getAbsolutePath());
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static String generateRandomDigits(int count) {
+    private static String getRandomNumbers(int length) {
         Random random = new Random();
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < count; i++) {
-            sb.append(random.nextInt(10)); // 生成0-9的随机数字
+        for (int i = 0; i < length; i++) {
+            sb.append(random.nextInt(10));
         }
         return sb.toString();
     }
