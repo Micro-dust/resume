@@ -1,55 +1,71 @@
 import java.io.*;
 import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Random;
 
-public class FileRenameAndContentUpdate {
+public class FileCreator {
+
     public static void main(String[] args) {
-        String directoryPath = "your_directory_path"; // 替换为你的目录路径
-        String target = "1504"; // 目标字符串
-        String replacement = "2549"; // 替换字符串
+        // CSV文件路径
+        String csvFilePath = "input.csv"; // 修改为你的CSV文件路径
+        String replacementString = "指定字符串"; // * 替换的字符串
 
-        File directory = new File(directoryPath);
-        if (directory.exists() && directory.isDirectory()) {
-            processFiles(directory, target, replacement);
-        } else {
-            System.out.println("指定的路径不是一个有效的目录");
-        }
-    }
+        try (BufferedReader br = new BufferedReader(new FileReader(csvFilePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] columns = line.split(",");
+                if (columns.length >= 4) {
+                    String folderPath = columns[0];
+                    String fileNamePattern = columns[1];
+                    int saveTime = Integer.parseInt(columns[2]);
 
-    public static void processFiles(File file, String target, String replacement) {
-        if (file.isDirectory()) {
-            // 递归处理子目录
-            for (File child : file.listFiles()) {
-                processFiles(child, target, replacement);
-            }
-        } else {
-            // 修改文件内容
-            updateFileContent(file, target, replacement);
-
-            // 修改文件名
-            String fileName = file.getName();
-            if (fileName.contains(target)) {
-                String newFileName = fileName.replace(target, replacement);
-                File newFile = new File(file.getParent(), newFileName);
-                if (file.renameTo(newFile)) {
-                    System.out.println("文件名已修改: " + file.getPath() + " -> " + newFile.getPath());
-                } else {
-                    System.out.println("文件名修改失败: " + file.getPath());
+                    for (int offset = 0; offset < 4; offset++) {
+                        createFile(folderPath, fileNamePattern, saveTime + offset, replacementString);
+                    }
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    public static void updateFileContent(File file, String target, String replacement) {
+    private static void createFile(String folderPath, String fileNamePattern, int daysOffset, String replacementString) {
         try {
-            Path filePath = file.toPath();
-            String content = new String(Files.readAllBytes(filePath));
-            if (content.contains(target)) {
-                content = content.replace(target, replacement);
-                Files.write(filePath, content.getBytes());
-                System.out.println("文件内容已修改: " + file.getPath());
+            // 创建文件夹
+            Files.createDirectories(Paths.get(folderPath));
+
+            // 计算文件名中的日期
+            LocalDate date = LocalDate.now().minusDays(daysOffset);
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+            String dateString = date.format(dateFormatter);
+
+            // 替换问号和星号
+            String fileName = fileNamePattern
+                    .replace("?????????", dateString + generateRandomDigits(9 - dateString.length()))
+                    .replace("*", replacementString);
+
+            // 创建文件
+            File file = new File(folderPath, fileName);
+            if (file.createNewFile()) {
+                System.out.println("Created file: " + file.getAbsolutePath());
+
+                // 设置文件修改时间
+                file.setLastModified(System.currentTimeMillis() - (long) daysOffset * 24 * 60 * 60 * 1000);
+            } else {
+                System.out.println("File already exists: " + file.getAbsolutePath());
             }
-        } catch (IOException e) {
-            System.out.println("无法修改文件内容: " + file.getPath() + "，错误: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private static String generateRandomDigits(int count) {
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            sb.append(random.nextInt(10)); // 生成0-9的随机数字
+        }
+        return sb.toString();
     }
 }
