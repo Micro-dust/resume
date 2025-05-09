@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# ディレクトリパスを取得
+FOLDER_PATH=$1
+
+# ディレクトリが存在するか確認
+if [ ! -d "$FOLDER_PATH" ]; then
+  echo "ディレクトリが存在しません：$FOLDER_PATH"
+  exit 1
+fi
+
+# ファイル名順にフォルダ内のファイルを処理
+for FILE in $(ls "$FOLDER_PATH" | sort); do
+  FILE_PATH="$FOLDER_PATH/$FILE"
+  echo "処理中のファイル: $FILE_PATH"
+
+  # ファイル内容を読み込む
+  FO_URL=$(grep '^FO_URL=' "$FILE_PATH" | cut -d'=' -f2-)
+  FO_METHOD=$(grep '^FO_METHOD=' "$FILE_PATH" | cut -d'=' -f2-)
+  FO_SENDFILE=$(grep '^FO_SENDFILE=' "$FILE_PATH" | cut -d'=' -f2-)
+
+  # 必要な項目が揃っているか確認
+  if [ -z "$FO_URL" ] || [ -z "$FO_METHOD" ] || [ -z "$FO_SENDFILE" ]; then
+    echo "ファイル $FILE に必要な項目がありません。スキップします。"
+    continue
+  fi
+
+  # HTTPリクエストを送信
+  RESPONSE=$(curl -s -w "\nHTTPステータスコード: %{http_code}\n" -X "$FO_METHOD" "$FO_URL" \
+    -H "Content-Type: application/json" \
+    -d "$FO_SENDFILE")
+
+  echo "レスポンス内容："
+  echo "$RESPONSE"
+  echo "-----------------------------"
+done
