@@ -1,36 +1,47 @@
 #!/bin/bash
 
-# ディレクトリパスを取得
-FOLDER_PATH=$1
+INPUT_PATH=$1
 
-# ディレクトリが存在するか確認
-if [ ! -d "$FOLDER_PATH" ]; then
-  echo "ディレクトリが存在しません：$FOLDER_PATH"
+# パスが指定されているか確認
+if [ -z "$INPUT_PATH" ]; then
+  echo "使い方: $0 <ファイルまたはディレクトリのパス>"
   exit 1
 fi
 
-# ファイル名順にフォルダ内のファイルを処理
-for FILE in $(ls "$FOLDER_PATH" | sort); do
-  FILE_PATH="$FOLDER_PATH/$FILE"
+# ファイルを処理する関数
+process_file() {
+  FILE_PATH="$1"
   echo "処理中のファイル: $FILE_PATH"
 
-  # ファイル内容を読み込む
   FO_URL=$(grep '^FO_URL=' "$FILE_PATH" | cut -d'=' -f2-)
   FO_METHOD=$(grep '^FO_METHOD=' "$FILE_PATH" | cut -d'=' -f2-)
   FO_SENDFILE=$(grep '^FO_SENDFILE=' "$FILE_PATH" | cut -d'=' -f2-)
 
-  # 必要な項目が揃っているか確認
   if [ -z "$FO_URL" ] || [ -z "$FO_METHOD" ] || [ -z "$FO_SENDFILE" ]; then
-    echo "ファイル $FILE に必要な項目がありません。スキップします。"
-    continue
+    echo "ファイル $FILE_PATH に必要な項目がありません。スキップします。"
+    return
   fi
 
-  # HTTPリクエストを送信
-  RESPONSE=$(curl -s -w "\nHTTPステータスコード: %{http_code}\n" -X "$FO_METHOD" "$FO_URL" \
+  RESPONSE=$(curl -s -i -X "$FO_METHOD" "$FO_URL" \
     -H "Content-Type: application/json" \
     -d "$FO_SENDFILE")
 
   echo "レスポンス内容："
   echo "$RESPONSE"
   echo "-----------------------------"
-done
+}
+
+# ディレクトリの場合
+if [ -d "$INPUT_PATH" ]; then
+  for FILE in $(ls "$INPUT_PATH" | sort); do
+    process_file "$INPUT_PATH/$FILE"
+  done
+
+# 単一ファイルの場合
+elif [ -f "$INPUT_PATH" ]; then
+  process_file "$INPUT_PATH"
+
+else
+  echo "指定されたパスが無効です：$INPUT_PATH"
+  exit 1
+fi
